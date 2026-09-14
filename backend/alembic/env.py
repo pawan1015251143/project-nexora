@@ -29,7 +29,7 @@ if config.config_file_name is not None:
 db_url = DATABASE_URL or os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
 if db_url:
     db_url = normalize_database_url(db_url)
-    config.set_main_option("sqlalchemy.url", db_url)
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 target_metadata = Base.metadata
 

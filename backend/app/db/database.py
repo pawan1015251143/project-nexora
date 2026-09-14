@@ -32,6 +32,7 @@ def _receive_do_connect(dialect, conn_rec, cargs, cparams):
 AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
 )
+async_session_maker = AsyncSessionLocal
 
 Base = declarative_base()
 
