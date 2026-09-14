@@ -82,19 +82,26 @@ class MockLLMService(BaseLLMService):
 
 class OpenAILLMService(BaseLLMService):
     def __init__(self):
+        self.model = getattr(settings, "OPENAI_MODEL", "gpt-4o-mini") or "gpt-4o-mini"
+        if not settings.OPENAI_API_KEY:
+            logger.warning("OPENAI_API_KEY not configured. OpenAI calls will fail.")
+            self.client = None
+            return
+
         try:
             from openai import AsyncOpenAI
-            if not settings.OPENAI_API_KEY:
-                logger.warning("OPENAI_API_KEY not found. OpenAI calls will fail.")
             self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            self.model = "gpt-4o-mini"
-        except ImportError:
-            logger.error("OpenAI package not installed.")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {e}")
             self.client = None
 
+    def _ensure_client(self):
+        if not self.client or not settings.OPENAI_API_KEY:
+            logger.error("Attempted OpenAI API call without client or valid OPENAI_API_KEY.")
+            raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+
     async def generate_response(self, system_prompt: str, user_prompt: str, conversation_history: List[Dict[str, str]] = None) -> Tuple[str, bool]:
-        if not self.client:
-            raise RuntimeError("OpenAI client not initialized")
+        self._ensure_client()
             
         messages = [{"role": "system", "content": system_prompt}]
         if conversation_history:
@@ -114,10 +121,16 @@ class OpenAILLMService(BaseLLMService):
                 timeout=15.0
             )
             
-            answer = response.choices[0].message.content
+            answer = response.choices[0].message.content or ""
             
             is_grounded = True
-            if "cannot verify the information" in answer.lower() or "do not have sufficient information" in answer.lower():
+            lower_answer = answer.lower()
+            if (
+                "cannot verify the information" in lower_answer
+                or "do not have sufficient information" in lower_answer
+                or "insufficient information" in lower_answer
+                or "cannot verify" in lower_answer
+            ):
                 is_grounded = False
                 
             return answer, is_grounded
@@ -125,19 +138,19 @@ class OpenAILLMService(BaseLLMService):
         except asyncio.TimeoutError:
             logger.error("LLM Provider Timeout")
             raise RuntimeError("AI provider is currently unavailable. Please try again later.")
-        except openai.APIConnectionError as e:
-            logger.error(f"LLM Connection Error: {e}")
-            raise RuntimeError("AI provider is currently unavailable. Please try again later.")
-        except openai.APIError as e:
-            logger.error(f"LLM API Error: {e}")
-            raise RuntimeError("AI provider is currently unavailable. Please try again later.")
         except Exception as e:
-            logger.error(f"Unexpected LLM Error: {e}")
-            raise RuntimeError("An internal error occurred while processing your request.")
+            import openai
+            if isinstance(e, (openai.OpenAIError, openai.APIError, openai.APIConnectionError, openai.RateLimitError, openai.AuthenticationError)):
+                logger.error(f"LLM API Error ({type(e).__name__}): {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+            elif isinstance(e, RuntimeError):
+                raise
+            else:
+                logger.error(f"Unexpected LLM Error: {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
 
     async def translate_notice(self, content: str, mode: str) -> str:
-        if not self.client:
-            raise RuntimeError("OpenAI client not initialized")
+        self._ensure_client()
             
         if mode == "hi_annotated":
             system_prompt = (
@@ -169,7 +182,6 @@ class OpenAILLMService(BaseLLMService):
         
         try:
             import openai
-            import asyncio
             response = await asyncio.wait_for(
                 self.client.chat.completions.create(
                     model=self.model,
@@ -178,18 +190,24 @@ class OpenAILLMService(BaseLLMService):
                 ),
                 timeout=15.0
             )
-            return response.choices[0].message.content
+            return response.choices[0].message.content or ""
         except asyncio.TimeoutError:
             logger.error("LLM Provider Timeout in translation")
             raise RuntimeError("AI provider is currently unavailable. Please try again later.")
         except Exception as e:
-            logger.error(f"Unexpected LLM Error in translation: {e}")
-            raise RuntimeError("An internal error occurred while processing your request.")
+            import openai
+            if isinstance(e, (openai.OpenAIError, openai.APIError, openai.APIConnectionError, openai.RateLimitError, openai.AuthenticationError)):
+                logger.error(f"LLM Translation Error ({type(e).__name__}): {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+            elif isinstance(e, RuntimeError):
+                raise
+            else:
+                logger.error(f"Unexpected LLM Error in translation: {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
 
     async def extract_notice_info(self, message_text: str, attachment_content: str = "") -> dict:
         """Use OpenAI to extract structured information from a notice."""
-        if not self.client:
-            raise RuntimeError("OpenAI client not initialized")
+        self._ensure_client()
 
         combined = message_text
         if attachment_content:
@@ -226,13 +244,21 @@ class OpenAILLMService(BaseLLMService):
                 ),
                 timeout=20.0
             )
-            result = json.loads(response.choices[0].message.content)
+            result = json.loads(response.choices[0].message.content or "{}")
             return result
         except asyncio.TimeoutError:
+            logger.error("LLM Provider Timeout in notice extraction")
             raise RuntimeError("AI provider is currently unavailable. Please try again later.")
         except Exception as e:
-            logger.error(f"Notice extraction error: {e}")
-            raise RuntimeError("An internal error occurred during notice extraction.")
+            import openai
+            if isinstance(e, (openai.OpenAIError, openai.APIError, openai.APIConnectionError, openai.RateLimitError, openai.AuthenticationError)):
+                logger.error(f"LLM Extraction Error ({type(e).__name__}): {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+            elif isinstance(e, RuntimeError):
+                raise
+            else:
+                logger.error(f"Notice extraction error: {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
 
 def get_llm_service() -> BaseLLMService:
     provider = settings.LLM_PROVIDER.lower()

@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     EMBEDDING_PROVIDER: str = "mock"   # "mock" | "openai"
     LLM_PROVIDER: str = "mock"         # "mock" | "openai"
     OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-4o-mini"
 
     # Database (also consumed directly by database.py via os.getenv for compatibility)
     DATABASE_URL: str = "postgresql+asyncpg://nexora_user:nexora_password@localhost:5432/nexora_db"
