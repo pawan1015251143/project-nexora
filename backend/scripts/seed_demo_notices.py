@@ -12,14 +12,15 @@ from datetime import datetime, timedelta
 # Add parent dir to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.future import select
 
 from app.models.demo_source_message import DemoSourceMessage
+from app.db.database import DATABASE_URL, normalize_database_url
 
-
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://nexora:nexora@localhost:5432/nexora")
+DB_URL = normalize_database_url(os.getenv("DATABASE_URL", DATABASE_URL))
 
 
 def compute_hash(message_text: str, attachment_name: str = None) -> str:
@@ -250,7 +251,16 @@ Website: www.abccollege.edu.in""",
 
 
 async def seed():
-    engine = create_async_engine(DATABASE_URL, echo=False)
+    engine = create_async_engine(DB_URL, echo=False)
+
+    @event.listens_for(engine.sync_engine, "do_connect")
+    def _receive_do_connect(dialect, conn_rec, cargs, cparams):
+        is_pgbouncer = cparams.pop("pgbouncer", None) is not None
+        host = str(cparams.get("host", ""))
+        port = cparams.get("port")
+        if is_pgbouncer or "pooler.supabase.com" in host or port == 6543:
+            cparams["statement_cache_size"] = 0
+
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:

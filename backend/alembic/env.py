@@ -3,7 +3,7 @@ from logging.config import fileConfig
 import sys
 import os
 
-from sqlalchemy import pool
+from sqlalchemy import pool, event
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -13,6 +13,7 @@ from alembic import context
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.db.database import DATABASE_URL
+from app.core.config import normalize_database_url
 from app.models import Base
 
 # this is the Alembic Config object, which provides
@@ -24,8 +25,11 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Override sqlalchemy.url with our DATABASE_URL
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+# Override sqlalchemy.url with our normalized DATABASE_URL
+db_url = DATABASE_URL or os.getenv("DATABASE_URL") or config.get_main_option("sqlalchemy.url")
+if db_url:
+    db_url = normalize_database_url(db_url)
+    config.set_main_option("sqlalchemy.url", db_url)
 
 target_metadata = Base.metadata
 
@@ -59,6 +63,14 @@ async def run_async_migrations() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+
+    @event.listens_for(connectable.sync_engine, "do_connect")
+    def _receive_do_connect(dialect, conn_rec, cargs, cparams):
+        is_pgbouncer = cparams.pop("pgbouncer", None) is not None
+        host = str(cparams.get("host", ""))
+        port = cparams.get("port")
+        if is_pgbouncer or "pooler.supabase.com" in host or port == 6543:
+            cparams["statement_cache_size"] = 0
 
     async with connectable.connect() as connection:
         await connection.run_sync(do_run_migrations)

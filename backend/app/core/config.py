@@ -1,5 +1,29 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 from typing import Optional, List
+
+
+def normalize_database_url(url: str) -> str:
+    """
+    Ensure the database URL uses the asyncpg driver for PostgreSQL with AsyncEngine.
+
+    Transforms:
+        postgresql://... -> postgresql+asyncpg://...
+        postgres://...   -> postgresql+asyncpg://...
+    Preserves:
+        postgresql+asyncpg://... (unchanged)
+        Query parameters such as ?pgbouncer=true, sslmode, etc.
+    """
+    if not url:
+        return url
+    url = url.strip().strip("'\"")
+    if url.startswith("postgresql+asyncpg://"):
+        return url
+    if url.startswith("postgresql://"):
+        return "postgresql+asyncpg://" + url[len("postgresql://"):]
+    if url.startswith("postgres://"):
+        return "postgresql+asyncpg://" + url[len("postgres://"):]
+    return url
 
 
 class Settings(BaseSettings):
@@ -24,9 +48,17 @@ class Settings(BaseSettings):
         extra="ignore"
     )
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def validate_database_url(cls, v: str) -> str:
+        if isinstance(v, str):
+            return normalize_database_url(v)
+        return v
+
     def get_cors_origins(self) -> List[str]:
         """Parse CORS_ORIGINS env var into a list, stripping whitespace."""
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
 
 settings = Settings()
+
