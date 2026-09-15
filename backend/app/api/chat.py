@@ -16,6 +16,7 @@ from app.services.rag_service import answer_question
 
 router = APIRouter()
 
+@router.post("", response_model=ChatResponse)
 @router.post("/", response_model=ChatResponse)
 async def chat_endpoint(
     request: ChatRequest,

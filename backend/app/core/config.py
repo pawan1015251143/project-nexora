@@ -57,8 +57,8 @@ class Settings(BaseSettings):
         return v
 
     def get_cors_origins(self) -> List[str]:
-        """Parse CORS_ORIGINS env var into a list, stripping whitespace."""
-        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+        """Parse CORS_ORIGINS env var into a list, stripping whitespace and trailing slashes."""
+        return [o.strip().rstrip("/") for o in self.CORS_ORIGINS.split(",") if o.strip()]
 
 
 settings = Settings()

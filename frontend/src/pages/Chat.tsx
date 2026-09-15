@@ -39,7 +39,7 @@ export default function Chat() {
     
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`${API_URL}/api/chat/`, {
+      const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
