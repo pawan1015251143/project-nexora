@@ -2,11 +2,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 
+from sqlalchemy import text
+from app.db.database import engine, Base
+import app.models  # Ensure all models are registered on Base.metadata
+
 app = FastAPI(
     title="Nexora API",
     description="AI-Powered Intelligent College Assistant API",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+async def startup_db_tables():
+    """Ensure database tables exist on startup."""
+    try:
+        async with engine.begin() as conn:
+            if engine.dialect.name == "postgresql":
+                await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception as e:
+        print(f"Startup database initialization warning: {e}")
 
 # CORS — configured via CORS_ORIGINS environment variable + automatic Vercel/Local regex fallback
 origins = settings.get_cors_origins()
