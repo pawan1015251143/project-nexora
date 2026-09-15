@@ -67,7 +67,11 @@ export default function AskNexoraContextual({ isOpen, onClose, contextType, cont
         })
       });
 
-      if (!res.ok) throw new Error("Failed to get response");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        const errorMsg = errData.detail || "Sorry, I encountered an error. Please try again.";
+        throw new Error(errorMsg);
+      }
       const data = await res.json();
       
       if (!conversationId && data.conversation_id) {
@@ -79,11 +83,11 @@ export default function AskNexoraContextual({ isOpen, onClose, contextType, cont
         role: "assistant", 
         content: data.answer
       }]);
-    } catch (err) {
+    } catch (err: any) {
       setMessages(prev => [...prev, { 
         id: Date.now(), 
         role: "assistant", 
-        content: "Sorry, I encountered an error. Please try again." 
+        content: err.message || "Sorry, I encountered an error. Please try again." 
       }]);
     } finally {
       setIsTyping(false);

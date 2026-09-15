@@ -183,3 +183,32 @@ async def test_chat_feedback(async_client: AsyncClient, student_token_headers: d
     )
     assert feedback_res.status_code == 200
     assert feedback_res.json()["status"] == "success"
+
+@pytest.mark.asyncio
+async def test_chat_contextual_request(async_client: AsyncClient, student_token_headers: dict, mock_answer_question):
+    """Test Ask Nexora contextual chat request (e.g. attendance, marks, fees)."""
+    response = await async_client.post(
+        "/api/chat/",
+        headers=student_token_headers,
+        json={
+            "query": "How is my attendance?",
+            "context_type": "attendance"
+        }
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "answer" in data
+    assert mock_answer_question.called
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_provider_error_handling(async_client: AsyncClient, student_token_headers: dict):
+    """Test that chat endpoint handles RuntimeError from provider cleanly with HTTP 503."""
+    with patch("app.api.chat.answer_question", side_effect=RuntimeError("AI provider is currently unavailable. Please try again later.")):
+        response = await async_client.post(
+            "/api/chat/",
+            headers=student_token_headers,
+            json={"query": "Hello"}
+        )
+        assert response.status_code == 503
+        assert "AI provider is currently unavailable" in response.json()["detail"]
+        assert "sk-" not in response.json()["detail"]

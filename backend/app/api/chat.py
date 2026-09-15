@@ -76,6 +76,12 @@ async def chat_endpoint(
         rag_response = await answer_question(rag_request, current_user, db)
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Unhandled exception in chat endpoint: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="An internal error occurred while processing your request. Please try again later.")
         
     # 5. Save Assistant Message
     assistant_msg = Message(

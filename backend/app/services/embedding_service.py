@@ -34,28 +34,50 @@ class OpenAIEmbeddingService(BaseEmbeddingService):
     """Service utilizing the official OpenAI API."""
     
     def __init__(self):
+        self.model = "text-embedding-3-small"
+        if not settings.OPENAI_API_KEY:
+            logger.warning("OPENAI_API_KEY not found. OpenAI embedding calls will fail.")
+            self.client = None
+            return
+
         try:
             from openai import AsyncOpenAI
-            if not settings.OPENAI_API_KEY:
-                logger.warning("OPENAI_API_KEY not found. OpenAI calls will fail.")
-                
             self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-            self.model = "text-embedding-3-small"
-        except ImportError:
-            logger.error("OpenAI package not installed.")
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI embedding client: {e}")
             self.client = None
 
+    def _ensure_client(self):
+        if not self.client or not settings.OPENAI_API_KEY:
+            logger.error("Attempted OpenAI embedding call without client or valid OPENAI_API_KEY.")
+            raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+
     async def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
-        if not self.client:
-            raise RuntimeError("OpenAI client not initialized")
-            
-        # Handle large batches if necessary, but assume lists are reasonably sized here
-        response = await self.client.embeddings.create(
-            input=texts,
-            model=self.model
-        )
-        # response.data is a list of Embedding objects, ordered by input
-        return [item.embedding for item in response.data]
+        self._ensure_client()
+        try:
+            import openai
+            import asyncio
+            response = await asyncio.wait_for(
+                self.client.embeddings.create(
+                    input=texts,
+                    model=self.model
+                ),
+                timeout=15.0
+            )
+            return [item.embedding for item in response.data]
+        except asyncio.TimeoutError:
+            logger.error("Embedding Provider Timeout")
+            raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+        except Exception as e:
+            import openai
+            if isinstance(e, (openai.OpenAIError, openai.APIError, openai.APIConnectionError, openai.RateLimitError, openai.AuthenticationError)):
+                logger.error(f"Embedding API Error ({type(e).__name__}): {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
+            elif isinstance(e, RuntimeError):
+                raise
+            else:
+                logger.error(f"Unexpected Embedding Error: {e}")
+                raise RuntimeError("AI provider is currently unavailable. Please try again later.")
 
     async def generate_embedding(self, text: str) -> List[float]:
         res = await self.generate_embeddings([text])
