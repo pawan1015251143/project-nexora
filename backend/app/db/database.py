@@ -4,36 +4,35 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy import event
 from app.core.config import settings, normalize_database_url
 
-raw_db_url = settings.DATABASE_URL
+raw_db_url = settings.DATABASE_URL.strip().strip("'\"")
 
-def is_db_host_resolvable(url: str) -> bool:
-    if not url or "sqlite" in url:
-        return True
+def extract_host(url: str) -> str:
+    if "@" in url:
+        part = url.split("@")[1].split("/")[0]
+        return part.split(":")[0].split("?")[0]
+    return ""
+
+host_to_check = extract_host(raw_db_url)
+use_sqlite = False
+
+if "sqlite" in raw_db_url:
+    use_sqlite = True
+elif host_to_check and host_to_check not in ("localhost", "127.0.0.1"):
     try:
-        if "@" in url:
-            host_part = url.split("@")[1].split("/")[0]
-            host = host_part.split(":")[0].split("?")[0]
-            if host and host not in ("localhost", "127.0.0.1"):
-                socket.gethostbyname(host)
-        return True
-    except socket.gaierror:
-        return False
-    except Exception:
-        return True
+        socket.getaddrinfo(host_to_check, None)
+    except Exception as e:
+        print(f"WARNING: Host '{host_to_check}' in DATABASE_URL cannot be resolved ({e}). Falling back to SQLite.")
+        use_sqlite = True
 
-if not is_db_host_resolvable(raw_db_url):
-    print("WARNING: Configured DATABASE_URL host is unresolvable. Falling back to local SQLite database.")
+if use_sqlite:
     DATABASE_URL = "sqlite+aiosqlite:///./nexora.db"
-else:
-    DATABASE_URL = normalize_database_url(raw_db_url)
-
-if "sqlite" in DATABASE_URL:
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
         connect_args={"check_same_thread": False}
     )
 else:
+    DATABASE_URL = normalize_database_url(raw_db_url)
     engine = create_async_engine(
         DATABASE_URL,
         echo=False,
