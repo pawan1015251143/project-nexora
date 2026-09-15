@@ -1,23 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { TopNav } from "./TopNav";
+import { getAuthToken, parseJwtPayload } from "../../lib/auth";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<"student" | "faculty" | "admin">("student");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     if (token) {
-      try {
-        const payloadBase64 = token.split(".")[1];
-        const payloadJson = atob(payloadBase64);
-        const payload = JSON.parse(payloadJson);
-        if (payload.role) {
-          setRole(payload.role);
-        }
-      } catch (e) {
-        console.error("Failed to parse token", e);
+      const payload = parseJwtPayload(token);
+      if (payload && payload.role) {
+        setRole(payload.role);
       }
     }
   }, []);

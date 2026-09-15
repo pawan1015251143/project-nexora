@@ -5,6 +5,7 @@ import {
   Upload, Loader2, AlertCircle, RefreshCw, Eye
 } from "lucide-react";
 import { API_URL } from "../../config";
+import { getAuthToken } from "../../lib/auth";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -180,7 +181,7 @@ export default function NoticeInbox() {
   const [importingId, setImportingId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+  const token = getAuthToken();
 
   const fetchInbox = async () => {
     setLoading(true);

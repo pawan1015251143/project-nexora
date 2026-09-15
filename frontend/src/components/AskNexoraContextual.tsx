@@ -5,6 +5,7 @@ import remarkGfm from "remark-gfm";
 import { Button } from "./ui/button";
 import { cn } from "../lib/utils";
 import { API_URL } from "../config";
+import { getAuthToken, clearAuthToken } from "../lib/auth";
 
 type Message = { id: number; role: string; content: string; };
 
@@ -52,7 +53,7 @@ export default function AskNexoraContextual({ isOpen, onClose, contextType, cont
     setIsTyping(true);
     
     try {
-      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+      const token = getAuthToken();
       if (!token) {
         setMessages(prev => [...prev, { 
           id: Date.now(), 
@@ -81,6 +82,7 @@ export default function AskNexoraContextual({ isOpen, onClose, contextType, cont
         const errData = await res.json().catch(() => ({}));
         let errorMsg = errData.detail || "Sorry, I encountered an error. Please try again.";
         if (res.status === 401) {
+          clearAuthToken();
           errorMsg = "Your session has expired or you are not authenticated. Please sign in again.";
         }
         throw new Error(errorMsg);

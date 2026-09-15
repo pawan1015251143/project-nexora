@@ -179,3 +179,24 @@ async def test_role_restriction_admin_allowed(async_client):
     response = await async_client.get("/api/auth/admin-only", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     assert "Welcome admin" in response.json()["message"]
+
+@pytest.mark.asyncio
+async def test_login_token_flow_for_chat(async_client):
+    # 1. Successful login produces valid access token
+    login_res = await async_client.post("/api/auth/login", data={
+        "username": "student@college.edu",
+        "password": "studentpass"
+    })
+    assert login_res.status_code == 200
+    token = login_res.json().get("access_token")
+    assert token is not None and len(token) > 0
+
+    # 2. Authenticated user request succeeds with Bearer token
+    me_res = await async_client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert me_res.status_code == 200
+    assert me_res.json()["email"] == "student@college.edu"
+
+    # 3. Unauthenticated request (without Bearer token or with empty header) fails with 401
+    unauth_res = await async_client.get("/api/auth/me")
+    assert unauth_res.status_code == 401
+

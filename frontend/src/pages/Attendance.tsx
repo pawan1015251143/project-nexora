@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { API_URL } from "../config";
+import { getAuthToken } from "../lib/auth";
 import AskNexoraContextual from "../components/AskNexoraContextual";
 import { Sparkles, CalendarCheck } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -20,7 +21,7 @@ export default function Attendance() {
   const [isAiOpen, setIsAiOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     fetch(`${API_URL}/api/student/attendance`, {
       headers: { "Authorization": `Bearer ${token}` }
     })

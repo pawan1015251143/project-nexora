@@ -9,6 +9,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell
 } from "recharts";
 import { API_URL } from "../../config";
+import { getAuthToken } from "../../lib/auth";
 
 type Metrics = {
   total_students: number;
@@ -43,7 +44,7 @@ export default function Analytics() {
   }, []);
 
   const fetchData = async () => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     if (!token) {
       setError("Not authorized");
       setLoading(false);

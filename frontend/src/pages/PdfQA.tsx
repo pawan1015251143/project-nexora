@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { cn } from "../lib/utils";
 import { API_URL } from "../config";
+import { getAuthToken } from "../lib/auth";
 
 type Document = {
   id: number;
@@ -48,7 +49,7 @@ export default function PdfQA() {
   }, []);
 
   const fetchDocuments = async () => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/documents/private`, {
         headers: { "Authorization": `Bearer ${token}` }
@@ -67,7 +68,7 @@ export default function PdfQA() {
     if (!uploadFile || !uploadTitle.trim()) return;
     
     setIsUploading(true);
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     const formData = new FormData();
     formData.append("title", uploadTitle);
     formData.append("file", uploadFile);
@@ -92,7 +93,7 @@ export default function PdfQA() {
 
   const handleDelete = async (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/documents/${id}`, {
         method: "DELETE",
@@ -126,7 +127,7 @@ export default function PdfQA() {
     setIsTyping(true);
     
     try {
-      const token = localStorage.getItem("token");
+      const token = getAuthToken();
       const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: {

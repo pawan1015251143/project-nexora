@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { cn } from "../lib/utils";
 import { API_URL } from "../config";
+import { getAuthToken } from "../lib/auth";
 
 type SearchResult = {
   id: number;
@@ -27,7 +28,7 @@ export default function Search() {
     if (!query.trim()) return;
 
     setIsSearching(true);
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     
     try {
       const res = await fetch(`${API_URL}/api/search?query=${encodeURIComponent(query)}&search_mode=${searchMode}`, {

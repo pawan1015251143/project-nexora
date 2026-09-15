@@ -4,6 +4,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { API_URL } from "../config";
+import { setAuthToken } from "../lib/auth";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -36,9 +37,12 @@ export default function Login() {
       }
 
       const data = await res.json();
-      localStorage.setItem("token", data.access_token);
-      localStorage.setItem("access_token", data.access_token);
-      navigate("/dashboard");
+      if (data.access_token) {
+        setAuthToken(data.access_token);
+        navigate("/dashboard");
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to login");
     } finally {

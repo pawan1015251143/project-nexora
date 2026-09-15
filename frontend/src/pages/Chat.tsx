@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { Card, CardContent } from "../components/ui/card";
 import { cn } from "../lib/utils";
 import { API_URL } from "../config";
+import { getAuthToken, clearAuthToken } from "../lib/auth";
 
 type Source = { document_title: string; page: number; relevance_score: number };
 type Message = { id: number; role: string; content: string; sources?: Source[] };
@@ -38,7 +39,7 @@ export default function Chat() {
     setIsTyping(true);
     
     try {
-      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+      const token = getAuthToken();
       if (!token) {
         setMessages(prev => [...prev, { 
           id: Date.now(), 
@@ -65,6 +66,7 @@ export default function Chat() {
         const errData = await res.json().catch(() => ({}));
         let errorMsg = errData.detail || "Sorry, I encountered an error. Please try again.";
         if (res.status === 401) {
+          clearAuthToken();
           errorMsg = "Your session has expired or you are not authenticated. Please sign in again.";
         }
         throw new Error(errorMsg);
@@ -100,7 +102,7 @@ export default function Chat() {
   };
 
   const handleFeedback = async (messageId: number, isHelpful: boolean) => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     if (!token) return;
     try {
       await fetch(`${API_URL}/api/chat/${messageId}/feedback`, {

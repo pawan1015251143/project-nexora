@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../components/ui/card";
 import { API_URL } from "../config";
+import { getAuthToken } from "../lib/auth";
 import AskNexoraContextual from "../components/AskNexoraContextual";
 import { Sparkles, CreditCard, AlertCircle, CheckCircle } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -20,7 +21,7 @@ export default function Fees() {
   const [isAiOpen, setIsAiOpen] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     fetch(`${API_URL}/api/student/fees`, {
       headers: { "Authorization": `Bearer ${token}` }
     })

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
 import { Bell, BookOpen, Clock, CalendarCheck, Award, CreditCard } from "lucide-react";
 import { API_URL } from "../config";
-import { jwtDecode } from "jwt-decode";
+import { getAuthToken, parseJwtPayload } from "../lib/auth";
 import { useNavigate, Link } from "react-router-dom";
 
 interface DashboardData {
@@ -20,15 +20,17 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
+    let currentRole = "student";
     if (token) {
-      try {
-        const decoded = jwtDecode<any>(token);
-        setRole(decoded.role || "student");
-      } catch (e) {}
+      const payload = parseJwtPayload(token);
+      if (payload && payload.role) {
+        currentRole = payload.role;
+        setRole(currentRole);
+      }
     }
 
-    if (role === "student") {
+    if (currentRole === "student" && token) {
       fetch(`${API_URL}/api/student/dashboard`, {
         headers: { "Authorization": `Bearer ${token}` }
       })
@@ -47,7 +49,7 @@ export default function Dashboard() {
     } else {
       setLoading(false);
     }
-  }, [role]);
+  }, []);
 
   if (loading) {
     return <div className="p-8">Loading dashboard...</div>;

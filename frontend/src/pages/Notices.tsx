@@ -5,6 +5,7 @@ import { Input } from "../components/ui/input";
 import { Card, CardContent } from "../components/ui/card";
 import { cn } from "../lib/utils";
 import { API_URL } from "../config";
+import { getAuthToken } from "../lib/auth";
 
 type Notice = {
   id: number;
@@ -26,7 +27,7 @@ export default function Notices() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const token = localStorage.getItem("token");
+      const token = getAuthToken();
       if (!token) return;
       try {
         const res = await fetch(`${API_URL}/api/auth/me`, {
@@ -45,7 +46,7 @@ export default function Notices() {
   }, []);
 
   const fetchNotices = async (query = "") => {
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     let url = `${API_URL}/api/notices`;
     if (query) {
       url += `?search_query=${encodeURIComponent(query)}`;
@@ -87,7 +88,7 @@ export default function Notices() {
 
   const handleDelete = async (id: number) => {
     if (!confirm("Are you sure you want to delete this notice?")) return;
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     try {
       const res = await fetch(`${API_URL}/api/notices/${id}`, {
         method: "DELETE",
@@ -114,7 +115,7 @@ export default function Notices() {
     }
 
     setTranslating(prev => ({ ...prev, [noticeId]: true }));
-    const token = localStorage.getItem("token");
+    const token = getAuthToken();
     
     try {
       const res = await fetch(`${API_URL}/api/notices/${noticeId}/translation?mode=${mode}`, {

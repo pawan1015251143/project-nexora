@@ -5,6 +5,7 @@ import {
   Sparkles, Eye, FileText, MessageSquare, Clock, Send, Edit3, RotateCcw
 } from "lucide-react";
 import { API_URL } from "../../config";
+import { getAuthToken } from "../../lib/auth";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -127,7 +128,7 @@ function PipelineIndicator({ status }: { status: string }) {
 export default function NoticeInboxDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+  const token = getAuthToken();
 
   const [item, setItem] = useState<InboxItem | null>(null);
   const [loading, setLoading] = useState(true);
