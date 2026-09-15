@@ -1,17 +1,46 @@
+import socket
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import declarative_base
 from sqlalchemy import event
 from app.core.config import settings, normalize_database_url
 
-DATABASE_URL = normalize_database_url(settings.DATABASE_URL)
+raw_db_url = settings.DATABASE_URL
 
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=False,   # Set True only for local debugging; verbose in production logs
-    pool_pre_ping=True,  # Detect stale connections
-    pool_size=10,
-    max_overflow=20,
-)
+def is_db_host_resolvable(url: str) -> bool:
+    if not url or "sqlite" in url:
+        return True
+    try:
+        if "@" in url:
+            host_part = url.split("@")[1].split("/")[0]
+            host = host_part.split(":")[0].split("?")[0]
+            if host and host not in ("localhost", "127.0.0.1"):
+                socket.gethostbyname(host)
+        return True
+    except socket.gaierror:
+        return False
+    except Exception:
+        return True
+
+if not is_db_host_resolvable(raw_db_url):
+    print("WARNING: Configured DATABASE_URL host is unresolvable. Falling back to local SQLite database.")
+    DATABASE_URL = "sqlite+aiosqlite:///./nexora.db"
+else:
+    DATABASE_URL = normalize_database_url(raw_db_url)
+
+if "sqlite" in DATABASE_URL:
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        connect_args={"check_same_thread": False}
+    )
+else:
+    engine = create_async_engine(
+        DATABASE_URL,
+        echo=False,
+        pool_pre_ping=True,
+        pool_size=10,
+        max_overflow=20,
+    )
 
 
 @event.listens_for(engine.sync_engine, "do_connect")
