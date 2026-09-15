@@ -52,12 +52,22 @@ export default function AskNexoraContextual({ isOpen, onClose, contextType, cont
     setIsTyping(true);
     
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("token") || localStorage.getItem("access_token");
+      if (!token) {
+        setMessages(prev => [...prev, { 
+          id: Date.now(), 
+          role: "assistant", 
+          content: "You are not logged in. Please sign in to ask Nexora." 
+        }]);
+        setIsTyping(false);
+        return;
+      }
+
       const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+          "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
           query: query,
@@ -69,7 +79,10 @@ export default function AskNexoraContextual({ isOpen, onClose, contextType, cont
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        const errorMsg = errData.detail || "Sorry, I encountered an error. Please try again.";
+        let errorMsg = errData.detail || "Sorry, I encountered an error. Please try again.";
+        if (res.status === 401) {
+          errorMsg = "Your session has expired or you are not authenticated. Please sign in again.";
+        }
         throw new Error(errorMsg);
       }
       const data = await res.json();

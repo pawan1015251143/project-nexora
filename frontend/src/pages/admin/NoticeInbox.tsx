@@ -180,7 +180,7 @@ export default function NoticeInbox() {
   const [importingId, setImportingId] = useState<number | null>(null);
   const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
 
-  const token = localStorage.getItem("access_token");
+  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
 
   const fetchInbox = async () => {
     setLoading(true);

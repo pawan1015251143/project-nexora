@@ -212,3 +212,17 @@ async def test_chat_endpoint_provider_error_handling(async_client: AsyncClient, 
         assert response.status_code == 503
         assert "AI provider is currently unavailable" in response.json()["detail"]
         assert "sk-" not in response.json()["detail"]
+
+@pytest.mark.asyncio
+async def test_chat_unauthenticated(async_client: AsyncClient):
+    """Test that sending a chat request without an Authorization header returns HTTP 401 Not authenticated."""
+    app.dependency_overrides.pop(get_current_active_user, None)
+    try:
+        response = await async_client.post(
+            "/api/chat",
+            json={"query": "Hello without token"}
+        )
+        assert response.status_code == 401
+        assert "Not authenticated" in response.json()["detail"]
+    finally:
+        app.dependency_overrides[get_current_active_user] = override_get_current_user

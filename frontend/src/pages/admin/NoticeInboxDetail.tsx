@@ -127,7 +127,7 @@ function PipelineIndicator({ status }: { status: string }) {
 export default function NoticeInboxDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const token = localStorage.getItem("access_token");
+  const token = localStorage.getItem("token") || localStorage.getItem("access_token");
 
   const [item, setItem] = useState<InboxItem | null>(null);
   const [loading, setLoading] = useState(true);
