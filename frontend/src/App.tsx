@@ -31,6 +31,16 @@ import UserManager from './pages/admin/UserManager';
 import NoticeInbox from './pages/admin/NoticeInbox';
 import NoticeInboxDetail from './pages/admin/NoticeInboxDetail';
 
+import { getAuthToken } from './lib/auth';
+
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const token = getAuthToken();
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
 function App() {
   return (
     <Router>
@@ -41,7 +51,7 @@ function App() {
         <Route path="/register" element={<Register />} />
 
         {/* Protected Routes wrapped in AppLayout */}
-        <Route path="/" element={<AppLayout><Outlet /></AppLayout>}>
+        <Route path="/" element={<ProtectedRoute><AppLayout><Outlet /></AppLayout></ProtectedRoute>}>
           {/* General routes */}
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="profile" element={<Profile />} />
